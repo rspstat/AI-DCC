@@ -5,3 +5,4 @@
 
 2026 데이터 AI 크리에이터 캠프 저장소
 
+온라인 연수원 : https://creatoredu.kbig.kr/
