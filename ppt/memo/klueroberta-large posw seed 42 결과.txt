@@ -1,0 +1,13 @@
+4일전.
+
+제목 : klue/roberta-large posw seed 42 결과
+
+내용 :
+설정 : klue/roberta-large, posw(neg/pos), lr 1e-5, batch 8,
+       8 epoch / patience 3, mean pooling (서버 RTX 3080)
+결과 : best macro-F1 0.6079 (epoch 5)
+
+→ 기준 0.620 미만이라 seed 123, 2026은 안 돌렸어요
+→ base posw(0.6177)보다도 낮음. large로 키워도 개선 없음
+
+📎 확률 CSV: klue-roberta-large_full_seed42_val_probs.csv (필요하면 공유할게요)

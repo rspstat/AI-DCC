@@ -1,0 +1,10 @@
+1일전.
+
+제목 : 최종 제출 패키지 완성 (후보 A)
+내용 : 
+구성: KLUE-RoBERTa(규현) + KcELECTRA-v2022(규현) + KoELECTRA-v3(연서), 각 3-seed = 9멤버
+규칙: 백본별 seed 평균 → 백본 동일 가중 → threshold 0.5 (가중치 탐색 없음)
+자체 점검 (인터넷·HF 캐시 차단, 다른 폴더 실행): macro-F1 0.6569, 앙상블 분석 결과와 정확히 일치
+효율: 1052.8M 파라미터 / 4.0GB / RTX 3080에서 3,640건 43.9초(샘플당 12.1ms)
+위치: 서버 ~/submit_m3_final/ (inference.py, m3_model.py, requirements.txt, model/)
+남은 것: VL json으로 최종 검증, CSV symptom 표기 확정, 학습 로그 ipynb·학습 코드 추가, 용량 제한 확인

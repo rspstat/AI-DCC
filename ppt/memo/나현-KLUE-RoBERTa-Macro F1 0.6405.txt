@@ -1,0 +1,61 @@
+9일전.
+
+제목 : 나현-KLUE-RoBERTa-Macro F1 0.6405
+내용 : 
+토큰 길이 분포 (klue/roberta-base 토크나이저, Training)
+| 중앙값 | p75 | p90 | p95 | 최대 | 512 초과 |
+|---|---|---|---|---|---|
+| 230 | 306 | 397 | 460 | 873 | 2.7% |
+ 
+→ 청크 처리나 KoBigBird 불필요. max_length=512 뒤쪽 자르기로 충분.
+→ 중앙값이 짧아서 dynamic padding(padding='longest')을 쓰면 학습이 빨라짐.
+ 
+모델·학습 설정
+백본: klue/roberta-base (add_pooling_layer=False), 약 110.2M 파라미터
+Pooling: mean pooling (attention mask 반영)
+Head: Linear(768→256) → ReLU → Dropout(0.3) → Linear(256→9)
+Optimizer: AdamW, 백본 lr 2e-5 / head lr 1e-3, weight_decay 0.01
+Scheduler: linear warmup(전체의 10%) + linear decay, 배치마다 step, total_steps는 항상 전체 EPOCHS 기준 (KoBERT 때 재시작 시 total_steps 꼬이던 버그 수정)
+체크포인트에 scheduler/scaler state까지 저장 → 끊겨도 재개 가능
+fp16 (torch.amp), batch 16, EPOCHS 8, early stopping patience 3
+epoch당 약 12.5분 (Colab)
+실험 결과 (공식 Validation, seed 42)
+Loss 비교
+| 실험 | Loss | best macro-F1 | best epoch |
+|---|---|---|---|
+| (기준) KoBERT | pos_weight = neg/pos | 0.5880 | 4 |
+| KLUE-RoBERTa | pos_weight = neg/pos (posw) | 0.6177 | 2 |
+| KLUE-RoBERTa | pos_weight 없음 (none) | 0.6118 | 4 |
+| KLUE-RoBERTa | pos_weight = √(neg/pos) (sqrt) | 0.6405 | 4 |
+ 
+백본 교체만으로 KoBERT 대비 +0.030
+loss를 sqrt로 바꿔서 추가로 +0.023
+세 실험 모두 epoch 4 전후 이후로 train loss는 내려가는데 F1은 떨어지는 과적합 패턴
+클래스별 F1
+| 클래스 | posw | none | sqrt |
+|---|---|---|---|
+| 고열 | 0.646 | 0.683 | 0.700 |
+| 구토 | 0.567 | 0.578 | 0.582 |
+| 두통 | 0.474 | 0.482 | 0.535 |
+| 복통 | 0.772 | 0.812 | 0.811 |
+| 어지러움 | 0.649 | 0.657 | 0.651 |
+| 열상 | 0.841 | 0.882 | 0.854 |
+| 오심 | 0.382 | 0.201 | 0.393 |
+| 전신쇠약 | 0.580 | 0.562 | 0.585 |
+| 호흡곤란 | 0.648 | 0.649 | 0.654 |
+| macro | 0.618 | 0.612 | 0.641 |
+ 
+Precision / Recall (macro 평균)
+| | P | R |
+|---|---|---|
+| posw | 0.546 | 0.722 |
+| none | 0.744 | 0.536 |
+| sqrt | 0.643 | 0.647 |
+해석
+pos_weight(neg/pos)는 과하게 양성 쪽으로 밀어줌. 9개 클래스 전부 recall > precision → 증상을 너무 많이 예측. threshold를 0.5로 고정해야 하므로 이 불균형은 loss에서 풀어야 함.
+pos_weight를 빼면 반대로 약한 클래스가 무너짐. 7개 클래스는 좋아졌지만 오심 recall이 0.128까지 떨어져 macro가 오히려 하락.
+sqrt가 절충점. P와 R이 거의 같아짐(0.643 / 0.647) → 확률이 0.5 기준에 맞게 보정된 상태. 오심도 회복.
+오심·두통은 여전히 최하위. 이전 KoBERT 오류 분석에서 확인했듯 라벨과 텍스트 표현이 잘 맞지 않는 클래스라(라벨이 통화 전체 상황 기준으로 사후 부여됨) 모델 개선만으로는 한계가 있음 → PPT에 데이터 특성/한계로 기재 예정.
+클래스별로 pos_weight를 따로 골라 넣는 방식은 Validation을 보고 클래스별 threshold를 조정하는 것과 비슷한 효과로 보일 수 있어 사용하지 않음. 모든 클래스에 같은 규칙(sqrt) 적용.
+팀원 참고사항
+pos_weight를 쓰고 있다면 sqrt로 바꿔보는 것 추천. 같은 recall 쏠림이 있을 가능성이 큼. @김규현 이거 한번 참고해서 해보시면 좋을거같아요!

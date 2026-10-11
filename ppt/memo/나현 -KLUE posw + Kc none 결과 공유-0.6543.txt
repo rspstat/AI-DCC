@@ -1,0 +1,73 @@
+1일전.
+
+제목 : 나현 -KLUE posw + Kc none 결과 공유-0.6543
+내용 : 최종 구성 (규정상 안전한 버전)
+| 백본 | loss | seed | 비고 |
+|---|---|---|---|
+| KLUE-RoBERTa base (mean pooling + MLP head) | posw (pos_weight = Train 음성/양성) | 42 / 123 / 2026 | 나현 |
+| KcELECTRA-base-v2022 (HF 기본 분류 head) | none (pos_weight 없음) | 42 / 123 / 2026 | 규현님 |
+
+앙상블 규칙 (Validation으로 가중치를 고르지 않음)
+백본별로 seed 3개 확률 평균
+두 백본 1:1 평균
+모든 클래스 threshold 0.5 고정 (prob >= 0.5)
+
+결과 (공식 Validation)
+| 구성 | macro-F1 |
+|---|---|
+| KLUE posw 3-seed 앙상블 | 0.6246 |
+| KcELECTRA none 3-seed 앙상블 | 0.6136 |
+| 최종: KLUE posw + Kc none | 0.6543 |
+| (참고, sqrt 사용) 팀원1 6모델 / 팀원2 4모델 | 0.6558 / 0.6567 |
+
+posw(recall형)와 none(precision형)이 서로 보완돼서, sqrt 앙상블과 차이가 0.002 정도뿐
+→ 멘토가 sqrt를 불허해도 손해가 거의 없음
+
+제출 코드 재현 확인 ✅
+inference.py로 Validation 3,640개를 추론한 결과를, 학습 때 저장한 확률 CSV로 계산한 앙상블과 비교했습니다.
+
+| 항목 | 결과 |
+|---|---|
+| macro-F1 | inference.py 0.6543 = CSV 앙상블 0.6543 |
+| 확률 최대 차이 | 0.00029 (fp16 연산 차이) |
+| 판정이 바뀐 (샘플, 클래스) | 0 / 32,760 |
+| 제출 CSV | 3,640행, 컬럼·형식 정상 |
+
+⚠️ 발견한 문제: KcELECTRA 라벨 순서
+규현님 KcELECTRA 모델은 학습 라벨 순서가 팀 순서와 다름 (meta.json의 labels)
+모델 출력: 복통, 어지러움, 전신쇠약, 고열, 구토, 호흡곤란, 열상, 오심, 두통
+팀 공통: 고열, 구토, 두통, 복통, 어지러움, 열상, 오심, 전신쇠약, 호흡곤란
+공유받은 CSV는 팀 순서로 다시 정렬돼 있었지만, 모델 자체는 다른 순서로 출력
+그대로 합치면 다른 증상끼리 확률이 섞여 점수가 망가짐
+해결: prepare_submission.py가 meta.json을 읽어 분류 head 마지막 층을 팀 순서로 재배열해 저장 (재배열 전후 출력이 정확히 일치하는 것 확인)
+👉 다른 HF 모델(sqrt 버전 등)을 앙상블에 넣을 때도 meta.json 라벨 순서를 꼭 확인해 주세요
+
+PPT 기재 항목
+| 항목 | 값 |
+|---|---|
+| 파라미터 | 약 715M (KLUE 110.6M ×3 + KcELECTRA 127.8M ×3, dense라 active = total) |
+| Validation batch size | 32 |
+| Validation 전체 추론 시간 | 167.5초 (샘플당 46ms, 모델 로딩 포함) |
+| 컴퓨팅 환경 | Colab GPU (종류 기재 필요) |
+
+빈 예측 78건 (2.1%)
+9개 증상 모두 확률 0.5 미만이라 []로 출력된 샘플
+
+---
+
+제출 패키지
+submission/
+  inference.py           # 제출용 추론 (대회 명령어 형식, 인터넷 없이 동작)
+  model_defs.py          # 라벨 순서, 입력 텍스트 구성, KLUE 모델 구조
+  prepare_submission.py  # (1회용) 체크포인트 정리 + 토크나이저·config 로컬 저장
+  check_reproduce.py     # (검증용) 재현 확인
+  requirements.txt
+  README.md
+ckpt_m3/
+  klue/       config, tokenizer, seed42.pt, seed123.pt, seed2026.pt
+  kcelectra/  config, tokenizer, seed42.pt, seed123.pt, seed2026.pt
+
+
+위치: Drive DCC/mission3/submission_m3/submission/, DCC/mission3/ckpt_m3/
+실행: python inference.py --audio_dir {wav} --label_dir {json} --ckpt_path ./ckpt_m3 --output ./outputs/mission3.csv
+체크포인트는 가중치만 저장 (optimizer 상태 제거) → 6개 합계 약 2.9GB

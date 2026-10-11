@@ -1,0 +1,20 @@
+9일전.
+
+제목 : 미션3 공통 설정
+
+내용 : 
+공통 설정 (팀 통일안)
+| 항목 | 내용 |
+|---|---|
+| split | 공식 Training 29,200 학습 / 공식 Validation 3,640은 평가·best epoch 선택에만 사용 |
+| 입력 텍스트 | utterances를 startAt 순으로 정렬 → text만 공백으로 연결 (화자 태그 없음, 규정상 전사 텍스트 외 라벨링데이터 사용 불가) |
+| 라벨 (공식 9개, 순서 고정) | 고열, 구토, 두통, 복통, 어지러움, 열상, 오심, 전신쇠약, 호흡곤란 |
+| 판정 | threshold 0.5 고정, prob >= 0.5 → 1 (공식 규정) |
+| best epoch 기준 | macro-F1 (대회 평가지표) |
+| 학습 seed | 42, 123, 2026 |
+| 확률 CSV | call_id(확장자 뺀 파일명), prob_{라벨} ×9, true_{라벨} ×9, 콜당 1행, best epoch 기준. 파일명/폴더명에 seed 표기 |
+ 
+파싱 캐시 공유: DCC/mission3/klue_roberta/parsed_train.pkl, parsed_val.pkl
+(call_id, text, labels 컬럼. 이걸 쓰면 입력 텍스트가 자동으로 통일됩니다)
+ 
+클래스별 양성 수 (Training): 복통 6771, 어지러움 6334, 전신쇠약 5310, 고열 5186, 구토 4463, 호흡곤란 3927, 열상 3465, 오심 3341, 두통 2905

@@ -1,0 +1,44 @@
+7일 전.
+
+제목 : 나현 KLUE-62.82
+
+내용 : 
+Mission 3 KLUE-RoBERTa 진행 공유 (10/3)
+공통 설정
+공식 Training 학습 / 공식 Validation 평가·best epoch 선택
+입력: startAt 정렬 후 text만 공백 연결 (화자 태그 없음), max_length 512
+라벨: 공식 9개, threshold 0.5 고정, best epoch은 macro-F1 기준
+모델: klue/roberta-base (110.2M), mean pooling, 백본 lr 2e-5 / head lr 1e-3, warmup 10% + linear decay, 8 epoch (early stopping 3)
+
+규정 관련 결정 (멘토 답변)
+pos_weight는 Train 비율 근거로 설정하면 허용, Validation 성능을 보고 고르는 건 불허
+이전 sqrt(√(neg/pos))는 Validation 비교로 골랐기 때문에 제출에 사용하지 않음 (참고 자료로만 보관, 멘토링 데이에 논의)
+제출용 loss: posw (neg/pos, Train 비율 그대로) 또는 none (가중치 없음)
+
+결과 (공식 Validation, macro-F1)
+| 구성 | seed 42 | seed 123 | seed 2026 | 평균 ± std | 3-seed 앙상블 |
+|---|---|---|---|---|---|
+| posw | 0.6177 | 0.6140 | 0.6115 | 0.6144 ± 0.0031 | 0.6282 |
+| none | 0.6118 | 진행 중 | 0.6124 | - | - |
+| (참고, 제출 불가) sqrt | 0.6405 | 0.6415 | 0.6459 | 0.6427 ± 0.0029 | 0.6514 |
+
+핵심 발견: posw + none 앙상블
+posw는 recall형, none은 precision형이라 서로 보완됨
+posw + none (seed 42 각 1개, 동일 가중치 평균) → 0.6440
+posw 3-seed 앙상블(0.6282)보다 +0.016, 모델 2개만으로 달성
+앙상블은 동일 가중치 평균만 사용 (가중치를 Validation으로 튜닝하지 않음)
+확률을 중간으로 옮기는 효과가 sqrt와 비슷해서, 멘토링 데이에 함께 확인 예정
+
+팀 앙상블 방향
+KcELECTRA(none)는 백본도 다르고 loss 성향도 KLUE posw와 반대 → KLUE posw + KcELECTRA none 조합이 가장 유력
+백본 자체 차이는 작음 (none 기준 KcELECTRA 0.6083 vs KLUE 0.6118)
+
+다음 할 일
+KLUE none seed 123 완료
+KcELECTRA none CSV 3개 받아서 조합 비교 (KLUE posw 3 + KLUE none 3 + KcELECTRA none 3)
+최종 조합으로 inference.py 작성
+멘토링 데이: posw+none 앙상블과 sqrt 사용 가능 여부 확인
+
+결과 파일 위치
+각 run 폴더: best.pt, log.csv, val_probs.csv (call_id, prob_{라벨}, true_{라벨})
+run 이름 형식: klue-roberta_meanpool_{posw|none}_seed{42|123|2026}
