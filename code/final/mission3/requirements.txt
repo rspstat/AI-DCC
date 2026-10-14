@@ -1,0 +1,8 @@
+# Mission 3 실행 환경 (Google Colab, Python 3 / Tesla T4에서 검증)
+# torch는 PyPI 기본 빌드 사용 (학습 환경: 2.11.0+cu130, GPU가 없으면 CPU로 자동 실행)
+torch==2.11.0
+transformers==5.18.0
+tokenizers==0.23.2
+safetensors==0.8.0
+numpy==2.1.3
+pandas==2.2.3

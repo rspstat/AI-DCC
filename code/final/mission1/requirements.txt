@@ -1,0 +1,9 @@
+# Mission 1 실행 환경 (Python 3.13, Google Colab에서 검증)
+# torch/torchaudio는 PyPI 기본 빌드 사용 (학습 환경: 2.11.0+cu130, GPU가 없으면 CPU로 자동 실행)
+torch==2.11.0
+torchaudio==2.11.0
+speechbrain==1.1.1
+scikit-learn==1.6.1
+joblib==1.6.0
+numpy==2.1.3
+soundfile==0.14.0
